@@ -1,0 +1,87 @@
+name: CI with Kubernetes, Unit & E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.7-dind
+        privileged: true
+        options: >-
+          --dns 8.8.8.8
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up KinD (Kubernetes in Docker)
+        uses: helm/kind-action@v1.8.0
+        with:
+          version: v0.22.0
+
+      - name: Build Docker images
+        run: |
+          docker build -t bakery-backend-admin:latest ./backend/backend-admin
+          docker build -t bakery-backend-customer:latest ./backend/backend-customer
+          docker build -t bakery-frontend-admin:latest ./frontend/frontend-admin
+          docker build -t bakery-frontend-customer:latest ./frontend/frontend-customer
+
+      - name: Load images into KinD
+        run: |
+          kind load docker-image bakery-backend-admin:latest
+          kind load docker-image bakery-backend-customer:latest
+          kind load docker-image bakery-frontend-admin:latest
+          kind load docker-image bakery-frontend-customer:latest
+
+      - name: Deploy Postgres
+        run: kubectl apply -f k8s/k8s-postgres.yaml
+      - name: Deploy Backend Admin
+        run: kubectl apply -f backend/backend-admin/k8s-backend-admin.yaml
+      - name: Deploy Backend Customer
+        run: kubectl apply -f backend/backend-customer/k8s-backend-customer.yaml
+      - name: Deploy Frontend Admin
+        run: kubectl apply -f frontend/frontend-admin/k8s-frontend-admin.yaml
+      - name: Deploy Frontend Customer
+        run: kubectl apply -f frontend/frontend-customer/k8s-frontend-customer.yaml
+
+      - name: Wait for services to be ready
+        run: |
+          kubectl wait --for=condition=available --timeout=180s deployment/backend-admin
+          kubectl wait --for=condition=available --timeout=180s deployment/backend-customer
+          kubectl wait --for=condition=available --timeout=180s deployment/frontend-admin
+          kubectl wait --for=condition=available --timeout=180s deployment/frontend-customer
+
+      - name: Run Backend Unit Tests
+        run: |
+          pip install -r backend/backend-admin/requirements.txt
+          pip install -r backend/backend-customer/requirements.txt
+          pytest backend/backend-admin
+          pytest backend/backend-customer
+
+      - name: Run Frontend Unit Tests
+        run: |
+          cd frontend/frontend-admin && npm ci && npm run test -- --watchAll=false
+          cd ../frontend-customer && npm ci && npm run test -- --watchAll=false
+
+      - name: Run E2E Tests
+        run: |
+          cd "E2E tests" && npm ci && npm run test -- --watchAll=false

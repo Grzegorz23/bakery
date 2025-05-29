@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-admin
+  template:
+    metadata:
+      labels:
+        app: backend-admin
+    spec:
+      containers:
+        - name: backend-admin
+          image: bakery-backend-admin:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5001
+          env:
+            - name: DB_CAKES_HOST
+              value: db-cakes
+            - name: DB_CAKES_NAME
+              value: db_cakes
+            - name: DB_CAKES_USER
+              value: testuser
+            - name: DB_CAKES_PASSWORD
+              value: testpass
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-admin
+spec:
+  type: NodePort
+  ports:
+    - port: 5001
+      targetPort: 5001
+      nodePort: 32001
+  selector:
+    app: backend-admin

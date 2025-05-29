@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-customer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-customer
+  template:
+    metadata:
+      labels:
+        app: backend-customer
+    spec:
+      containers:
+        - name: backend-customer
+          image: bakery-backend-customer:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5002
+          env:
+            - name: DB_ORDERS_HOST
+              value: db-orders
+            - name: DB_ORDERS_NAME
+              value: db_orders
+            - name: DB_ORDERS_USER
+              value: testuser
+            - name: DB_ORDERS_PASSWORD
+              value: testpass
+            - name: DB_CAKES_HOST
+              value: db-cakes
+            - name: DB_CAKES_NAME
+              value: db_cakes
+            - name: DB_CAKES_USER
+              value: testuser
+            - name: DB_CAKES_PASSWORD
+              value: testpass
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-customer
+spec:
+  type: NodePort
+  ports:
+    - port: 5002
+      targetPort: 5002
+      nodePort: 32002
+  selector:
+    app: backend-customer
