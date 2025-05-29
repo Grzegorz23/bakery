@@ -1,0 +1,12 @@
+playwright-report/
+
+node_modules/
+
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

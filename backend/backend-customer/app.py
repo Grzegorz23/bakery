@@ -14,7 +14,6 @@ def get_database_url(db_name):
         db_password = os.environ.get(f'DB_{db_name}_PASSWORD')
         db_host = os.environ.get(f'DB_{db_name}_HOST')
         db_name = os.environ.get(f'DB_{db_name}_NAME')
-
         return f'postgresql://{db_user}:{db_password}@{db_host}/{db_name}'
 
 def create_app_engine(db_name):
@@ -22,7 +21,6 @@ def create_app_engine(db_name):
 
 orders_engine = create_app_engine('ORDERS')
 cakes_engine = create_app_engine('CAKES')
-
 
 @app.route('/')
 def health_check():
@@ -32,9 +30,8 @@ def health_check():
 def get_items():
     with orders_engine.connect() as conn:
         result = conn.execute(text("SELECT id, name, surname, taste, delivery_date FROM orders"))
-        orders = [{"id": row[0], "name": row[1], "cost": row[2],"taste": row[3], "delivery_date": row[4]} for row in result]
+        orders = [{"id": row[0], "name": row[1], "surname": row[2],"taste": row[3], "delivery_date": row[4]} for row in result]
     return jsonify(orders)
-
 
 @app.route('/orders', methods=['POST'])
 def add_item():
@@ -43,33 +40,13 @@ def add_item():
     surname = data.get("surname")
     taste = data.get("taste")
     delivery_date = data.get("delivery_date")
-
     if not name or not surname or not delivery_date:
         return jsonify({"error": "Missing required fields"}), 400
-
     with orders_engine.connect() as conn:
         conn.execute(text("INSERT INTO orders (name, surname, taste, delivery_date) VALUES (:name, :surname, :taste, :delivery_date)"),
                      {"name": name, "surname": surname, "taste": taste, "delivery_date": delivery_date})
         conn.commit()
-
     return jsonify({"message": f"Order '{name}' added successfully"}), 201
-
-@app.route('/cakes/add', methods=['POST'])
-def add_cake():
-    data = request.get_json()
-    name = data.get("name")
-    price = data.get("price")
-
-    if not name or not price:
-        return jsonify({"error": "Missing required fields"}), 400
-
-    with cakes_engine.connect() as conn:
-        conn.execute(
-            text("INSERT INTO cakes (name, price) VALUES (:name, :price)"),
-            {"name": name, "price": price})
-        conn.commit()
-
-    return jsonify({"message": f"Cake '{name}' added successfully"}), 201
 
 @app.route('/cakes')
 def get_cakes():
@@ -78,5 +55,7 @@ def get_cakes():
         cakes = [{"id": row[0], "name": row[1], "price": row[2]} for row in result]
     return jsonify(cakes)
 
+# TODO: Add endpoints for gallery, customer logic
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)

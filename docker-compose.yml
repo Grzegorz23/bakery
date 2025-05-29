@@ -1,40 +1,78 @@
 version: '3.9'
 
 services:
-  backend:
-    build: ./backend
+  backend-admin:
+    build: ./backend/backend-admin
     ports:
-      - "5000:5000"
+      - "5001:5001"
     environment:
-      - DB_HOST=db
-      - DB_NAME=testdb
-      - DB_USER=testuser
-      - DB_PASSWORD=testpass
+      - DB_CAKES_HOST=db_cakes
+      - DB_CAKES_NAME=db_cakes
+      - DB_CAKES_USER=testuser
+      - DB_CAKES_PASSWORD=testpass
     volumes:
-      - ./backend:/app
+      - ./backend/backend-admin:/app
     depends_on:
-      - db
+      - db_cakes
 
-  frontend:
-    build: ./frontend
+  backend-customer:
+    build: ./backend/backend-customer
+    ports:
+      - "5002:5002"
+    environment:
+      - DB_ORDERS_HOST=db_orders
+      - DB_ORDERS_NAME=db_orders
+      - DB_ORDERS_USER=testuser
+      - DB_ORDERS_PASSWORD=testpass
+      - DB_CAKES_HOST=db_cakes
+      - DB_CAKES_NAME=db_cakes
+      - DB_CAKES_USER=testuser
+      - DB_CAKES_PASSWORD=testpass
+    volumes:
+      - ./backend/backend-customer:/app
+    depends_on:
+      - db_orders
+      - db_cakes
+
+  frontend-admin:
+    build: ./frontend/frontend-admin
+    ports:
+      - "5174:5173"
+    depends_on:
+      - backend-admin
+    volumes:
+      - ./frontend/frontend-admin:/app
+      - /app/node_modules
+
+  frontend-customer:
+    build: ./frontend/frontend-customer
     ports:
       - "5173:5173"
     depends_on:
-      - backend
+      - backend-customer
     volumes:
-      - ./frontend:/app
+      - ./frontend/frontend-customer:/app
       - /app/node_modules
 
-  db:
+  db_orders:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: testdb
+      POSTGRES_DB: db_orders
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpass
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./orders.sql:/docker-entrypoint-initdb.d/orders.sql
+
+  db_cakes:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: db_cakes
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+    volumes:
+      - ./cakes.sql:/docker-entrypoint-initdb.d/cakes.sql
 
 volumes:
   postgres-data:
